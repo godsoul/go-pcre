@@ -252,6 +252,16 @@ func (re *Regexp) Study(flags int) error {
 	return nil
 }
 
+// Return the start and end of the first match, or nil if no match.
+// loc[0] is the start and loc[1] is the end.
+func (re *Regexp) FindString(s string, flags int) string {
+	m := re.Matcher([]byte(s), flags)
+	if m.Matches() {
+		return s[int(m.ovector[0]):int(m.ovector[1])]
+	}
+	return ""
+}
+
 // Groups returns the number of capture groups in the compiled pattern.
 func (re Regexp) Groups() int {
 	if re.ptr == nil {
@@ -281,12 +291,25 @@ func (re Regexp) NewMatcher() (m *Matcher) {
 	return
 }
 
+// Tries to match the speficied byte array slice to the current pattern.
+// Returns true if the match succeeds.
+func (re *Regexp) Match(subject []byte, flags int) bool {
+	m := re.Matcher(subject, flags)
+	return m.Matches()
+}
+
 // Matcher creates a new matcher object, with the byte slice as subject.
 // It also starts a first match on subject. Test for success with Matches().
 func (re Regexp) Matcher(subject []byte, flags int) (m *Matcher) {
 	m = re.NewMatcher()
 	m.Match(subject, flags)
 	return
+}
+
+// Same as Match, but accept string as argument
+func (re *Regexp) MatchString(subject string, flags int) bool {
+	m := re.Matcher([]byte(subject), flags)
+	return m.Matches()
 }
 
 // MatcherString creates a new matcher, with the specified subject string.
@@ -591,6 +614,17 @@ func (m *Matcher) NamedPresent(group string) (bool, error) {
 		return false, err
 	}
 	return m.Present(groupNum), nil
+}
+
+// Return the start and end of the first match.
+func (re *Regexp) FindAllIndex(bytes []byte, flags int) (r [][]int) {
+	m := re.Matcher(bytes, flags)
+	offset := 0
+	for m.Match(bytes[offset:], flags) {
+		r = append(r, []int{offset + int(m.ovector[0]), offset + int(m.ovector[1])})
+		offset += int(m.ovector[1])
+	}
+	return
 }
 
 // FindIndex returns the start and end of the first match,
